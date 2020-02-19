@@ -12,11 +12,17 @@ Each kubeconfig requires a Kubernetes API Server to connect to. To support high 
 
 Retrieve the `kubernetes-the-hard-way` static IP address:
 
-```
+<table style="width: 100vw;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="max-width:50vw;vertical-align:top"><pre>
 KUBERNETES_PUBLIC_ADDRESS=$(gcloud compute addresses describe kubernetes-the-hard-way \
   --region $(gcloud config get-value compute/region) \
   --format 'value(address)')
-```
+</pre></td>
+<td style="max-width:50vw;vertical-align:top"><pre>
+export KUBERNETES_PUBLIC_ADDRESS=$(exo eip list -O json | jq ".[].ip_address" | tr -d '"')
+</pre></td></tr></table>
+
 
 ### The kubelet Kubernetes Configuration File
 
@@ -62,7 +68,6 @@ worker-2.kubeconfig
 Generate a kubeconfig file for the `kube-proxy` service:
 
 ```
-{
   kubectl config set-cluster kubernetes-the-hard-way \
     --certificate-authority=ca.pem \
     --embed-certs=true \
@@ -81,7 +86,6 @@ Generate a kubeconfig file for the `kube-proxy` service:
     --kubeconfig=kube-proxy.kubeconfig
 
   kubectl config use-context default --kubeconfig=kube-proxy.kubeconfig
-}
 ```
 
 Results:
@@ -95,7 +99,6 @@ kube-proxy.kubeconfig
 Generate a kubeconfig file for the `kube-controller-manager` service:
 
 ```
-{
   kubectl config set-cluster kubernetes-the-hard-way \
     --certificate-authority=ca.pem \
     --embed-certs=true \
@@ -114,7 +117,6 @@ Generate a kubeconfig file for the `kube-controller-manager` service:
     --kubeconfig=kube-controller-manager.kubeconfig
 
   kubectl config use-context default --kubeconfig=kube-controller-manager.kubeconfig
-}
 ```
 
 Results:
@@ -129,7 +131,6 @@ kube-controller-manager.kubeconfig
 Generate a kubeconfig file for the `kube-scheduler` service:
 
 ```
-{
   kubectl config set-cluster kubernetes-the-hard-way \
     --certificate-authority=ca.pem \
     --embed-certs=true \
@@ -148,7 +149,6 @@ Generate a kubeconfig file for the `kube-scheduler` service:
     --kubeconfig=kube-scheduler.kubeconfig
 
   kubectl config use-context default --kubeconfig=kube-scheduler.kubeconfig
-}
 ```
 
 Results:
@@ -162,7 +162,6 @@ kube-scheduler.kubeconfig
 Generate a kubeconfig file for the `admin` user:
 
 ```
-{
   kubectl config set-cluster kubernetes-the-hard-way \
     --certificate-authority=ca.pem \
     --embed-certs=true \
@@ -181,7 +180,6 @@ Generate a kubeconfig file for the `admin` user:
     --kubeconfig=admin.kubeconfig
 
   kubectl config use-context default --kubeconfig=admin.kubeconfig
-}
 ```
 
 Results:
@@ -190,25 +188,40 @@ Results:
 admin.kubeconfig
 ```
 
-
-## 
-
 ## Distribute the Kubernetes Configuration Files
 
 Copy the appropriate `kubelet` and `kube-proxy` kubeconfig files to each worker instance:
 
-```
+<table style="width: 100vw;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="max-width:50vw;vertical-align:top"><pre>
 for instance in worker-0 worker-1 worker-2; do
   gcloud compute scp ${instance}.kubeconfig kube-proxy.kubeconfig ${instance}:~/
 done
-```
+</pre></td>
+<td style="max-width:50vw;vertical-align:top"><pre>
+for instance in worker-0 worker-1 worker-2; do
+  ip=$(exo vm show ${instance} -O json | jq .ip_address | tr -d '"')
+  scp ${instance}.kubeconfig kube-proxy.kubeconfig ubuntu@${ip}:~/
+done
+</pre></td></tr></table>
+
 
 Copy the appropriate `kube-controller-manager` and `kube-scheduler` kubeconfig files to each controller instance:
 
-```
+
+<table style="width: 100vw;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="max-width:50vw;vertical-align:top"><pre>
 for instance in controller-0 controller-1 controller-2; do
   gcloud compute scp admin.kubeconfig kube-controller-manager.kubeconfig kube-scheduler.kubeconfig ${instance}:~/
 done
-```
+</pre></td>
+<td style="max-width:50vw;vertical-align:top"><pre>
+for instance in controller-0 controller-1 controller-2; do
+  ip=$(exo vm show ${instance} -O json | jq .ip_address | tr -d '"')
+  scp admin.kubeconfig kube-controller-manager.kubeconfig kube-scheduler.kubeconfig ubuntu@${ip}:~/
+done
+</pre></td></tr></table>
 
 Next: [Generating the Data Encryption Config and Key](06-data-encryption-keys.md)

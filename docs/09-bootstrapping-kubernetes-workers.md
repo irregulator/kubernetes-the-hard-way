@@ -6,9 +6,14 @@ In this lab you will bootstrap three Kubernetes worker nodes. The following comp
 
 The commands in this lab must be run on each worker instance: `worker-0`, `worker-1`, and `worker-2`. Login to each worker instance using the `gcloud` command. Example:
 
-```
+<table style="width: 100vw;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="max-width:50vw;vertical-align:top"><pre>
 gcloud compute ssh worker-0
-```
+</pre></td>
+<td style="max-width:50vw;vertical-align:top"><pre>
+exo ssh worker-0
+</pre></td></tr></table>
 
 ### Running commands in parallel with tmux
 
@@ -19,10 +24,8 @@ gcloud compute ssh worker-0
 Install the OS dependencies:
 
 ```
-{
   sudo apt-get update
   sudo apt-get -y install socat conntrack ipset
-}
 ```
 
 > The socat binary enables support for the `kubectl port-forward` command.
@@ -73,7 +76,6 @@ sudo mkdir -p \
 Install the worker binaries:
 
 ```
-{
   mkdir containerd
   tar -xvf crictl-v1.15.0-linux-amd64.tar.gz
   tar -xvf containerd-1.2.9.linux-amd64.tar.gz -C containerd
@@ -82,17 +84,34 @@ Install the worker binaries:
   chmod +x crictl kubectl kube-proxy kubelet runc 
   sudo mv crictl kubectl kube-proxy kubelet runc /usr/local/bin/
   sudo mv containerd/bin/* /bin/
-}
 ```
 
 ### Configure CNI Networking
 
-Retrieve the Pod CIDR range for the current compute instance:
+Remember that the Pod CIDR was defined in step 03 and each worker
+has its own Pod CIDR:
 
 ```
+for i in 0 1 2; do
+  gcloud compute instances create worker-${i} \
+    ...
+    --metadata pod-cidr=10.200.${i}.0/24 \
+    ...
+```
+
+Retrieve the Pod CIDR range for the current compute instance:
+
+<table style="width: 100vw;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="max-width:50vw;vertical-align:top"><pre>
 POD_CIDR=$(curl -s -H "Metadata-Flavor: Google" \
   http://metadata.google.internal/computeMetadata/v1/instance/attributes/pod-cidr)
-```
+</pre></td>
+<td style="max-width:50vw;vertical-align:top"><pre>
+export POD_INDEX=$(hostname | cut -d "-" -f2)
+export POD_CIDR=10.240.${POD_INDEX}.0/24
+</pre></td></tr></table>
+
 
 Create the `bridge` network configuration file:
 
@@ -177,11 +196,9 @@ EOF
 ### Configure the Kubelet
 
 ```
-{
   sudo mv ${HOSTNAME}-key.pem ${HOSTNAME}.pem /var/lib/kubelet/
   sudo mv ${HOSTNAME}.kubeconfig /var/lib/kubelet/kubeconfig
   sudo mv ca.pem /var/lib/kubernetes/
-}
 ```
 
 Create the `kubelet-config.yaml` configuration file:
@@ -223,14 +240,14 @@ After=containerd.service
 Requires=containerd.service
 
 [Service]
-ExecStart=/usr/local/bin/kubelet \\
-  --config=/var/lib/kubelet/kubelet-config.yaml \\
-  --container-runtime=remote \\
-  --container-runtime-endpoint=unix:///var/run/containerd/containerd.sock \\
-  --image-pull-progress-deadline=2m \\
-  --kubeconfig=/var/lib/kubelet/kubeconfig \\
-  --network-plugin=cni \\
-  --register-node=true \\
+ExecStart=/usr/local/bin/kubelet \
+  --config=/var/lib/kubelet/kubelet-config.yaml \
+  --container-runtime=remote \
+  --container-runtime-endpoint=unix:///var/run/containerd/containerd.sock \
+  --image-pull-progress-deadline=2m \
+  --kubeconfig=/var/lib/kubelet/kubeconfig \
+  --network-plugin=cni \
+  --register-node=true \
   --v=2
 Restart=on-failure
 RestartSec=5
@@ -255,7 +272,7 @@ apiVersion: kubeproxy.config.k8s.io/v1alpha1
 clientConnection:
   kubeconfig: "/var/lib/kube-proxy/kubeconfig"
 mode: "iptables"
-clusterCIDR: "10.200.0.0/16"
+clusterCIDR: "10.0.0.0/24"
 EOF
 ```
 
@@ -268,7 +285,7 @@ Description=Kubernetes Kube Proxy
 Documentation=https://github.com/kubernetes/kubernetes
 
 [Service]
-ExecStart=/usr/local/bin/kube-proxy \\
+ExecStart=/usr/local/bin/kube-proxy \
   --config=/var/lib/kube-proxy/kube-proxy-config.yaml
 Restart=on-failure
 RestartSec=5
@@ -281,11 +298,9 @@ EOF
 ### Start the Worker Services
 
 ```
-{
   sudo systemctl daemon-reload
   sudo systemctl enable containerd kubelet kube-proxy
   sudo systemctl start containerd kubelet kube-proxy
-}
 ```
 
 > Remember to run the above commands on each worker node: `worker-0`, `worker-1`, and `worker-2`.

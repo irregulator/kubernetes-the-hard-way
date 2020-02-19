@@ -9,8 +9,6 @@ In this section you will provision a Certificate Authority that can be used to g
 Generate the CA configuration file, certificate, and private key:
 
 ```
-{
-
 cat > ca-config.json <<EOF
 {
   "signing": {
@@ -36,19 +34,17 @@ cat > ca-csr.json <<EOF
   },
   "names": [
     {
-      "C": "US",
-      "L": "Portland",
+      "C": "PT",
+      "L": "Lisbon",
       "O": "Kubernetes",
-      "OU": "CA",
-      "ST": "Oregon"
+      "OU": "Lisbon",
+      "ST": "Lisbon"
     }
   ]
 }
 EOF
 
 cfssl gencert -initca ca-csr.json | cfssljson -bare ca
-
-}
 ```
 
 Results:
@@ -67,8 +63,6 @@ In this section you will generate client and server certificates for each Kubern
 Generate the `admin` client certificate and private key:
 
 ```
-{
-
 cat > admin-csr.json <<EOF
 {
   "CN": "admin",
@@ -78,11 +72,11 @@ cat > admin-csr.json <<EOF
   },
   "names": [
     {
-      "C": "US",
-      "L": "Portland",
+      "C": "PT",
+      "L": "Lisbon",
       "O": "system:masters",
       "OU": "Kubernetes The Hard Way",
-      "ST": "Oregon"
+      "ST": "Lisbon"
     }
   ]
 }
@@ -94,8 +88,6 @@ cfssl gencert \
   -config=ca-config.json \
   -profile=kubernetes \
   admin-csr.json | cfssljson -bare admin
-
-}
 ```
 
 Results:
@@ -111,9 +103,12 @@ Kubernetes uses a [special-purpose authorization mode](https://kubernetes.io/doc
 
 Generate a certificate and private key for each Kubernetes worker node:
 
-```
+<table style="width: 100%;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="width:50%;vertical-align:top">
+<pre>
 for instance in worker-0 worker-1 worker-2; do
-cat > ${instance}-csr.json <<EOF
+cat > ${instance}-csr.json <&lt;EOF
 {
   "CN": "system:node:${instance}",
   "key": {
@@ -122,31 +117,66 @@ cat > ${instance}-csr.json <<EOF
   },
   "names": [
     {
-      "C": "US",
-      "L": "Portland",
+      "C": "PT",
+      "L": "Lisbon",
       "O": "system:nodes",
       "OU": "Kubernetes The Hard Way",
-      "ST": "Oregon"
+      "ST": "Lisbon"
     }
   ]
 }
 EOF
 
-EXTERNAL_IP=$(gcloud compute instances describe ${instance} \
+EXTERNAL_IP=$(gcloud compute instances describe ${instance} &bsol;
   --format 'value(networkInterfaces[0].accessConfigs[0].natIP)')
 
-INTERNAL_IP=$(gcloud compute instances describe ${instance} \
+INTERNAL_IP=$(gcloud compute instances describe ${instance} &bsol;
   --format 'value(networkInterfaces[0].networkIP)')
 
-cfssl gencert \
-  -ca=ca.pem \
-  -ca-key=ca-key.pem \
-  -config=ca-config.json \
-  -hostname=${instance},${EXTERNAL_IP},${INTERNAL_IP} \
-  -profile=kubernetes \
+cfssl gencert &bsol;
+  -ca=ca.pem &bsol;
+  -ca-key=ca-key.pem &bsol;
+  -config=ca-config.json &bsol;
+  -hostname=${instance},${EXTERNAL_IP},${INTERNAL_IP} &bsol;
+  -profile=kubernetes &bsol;
   ${instance}-csr.json | cfssljson -bare ${instance}
 done
-```
+</pre></td>
+<td style="vertical-align:top"><pre>
+for instance in worker-0 worker-1 worker-2; do
+cat > ${instance}-csr.json <&lt;EOF
+{
+  "CN": "system:node:${instance}",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "PT",
+      "L": "Lisbon",
+      "O": "system:nodes",
+      "OU": "Kubernetes The Hard Way",
+      "ST": "Lisbon"
+    }
+  ]
+}
+EOF
+
+export EXTERNAL_IP=$(exo vm show ${instance} -O json | jq .ip_address | tr -d '"')
+
+export INTERNAL_IP=$(ssh ubuntu@$EXTERNAL_IP -C "ip addr show eth1  | grep -Po 'inet \K[\d.]+'")
+
+cfssl gencert &bsol;
+  -ca=ca.pem &bsol;
+  -ca-key=ca-key.pem &bsol;
+  -config=ca-config.json &bsol;
+  -hostname=${instance},${EXTERNAL_IP},${INTERNAL_IP} &bsol;
+  -profile=kubernetes &bsol;
+  ${instance}-csr.json | cfssljson -bare ${instance}
+done
+</pre></td></tr></table>
+
 
 Results:
 
@@ -164,8 +194,6 @@ worker-2.pem
 Generate the `kube-controller-manager` client certificate and private key:
 
 ```
-{
-
 cat > kube-controller-manager-csr.json <<EOF
 {
   "CN": "system:kube-controller-manager",
@@ -175,11 +203,11 @@ cat > kube-controller-manager-csr.json <<EOF
   },
   "names": [
     {
-      "C": "US",
-      "L": "Portland",
+      "C": "PT",
+      "L": "Lisbon",
       "O": "system:kube-controller-manager",
       "OU": "Kubernetes The Hard Way",
-      "ST": "Oregon"
+      "ST": "Lisbon"
     }
   ]
 }
@@ -191,8 +219,6 @@ cfssl gencert \
   -config=ca-config.json \
   -profile=kubernetes \
   kube-controller-manager-csr.json | cfssljson -bare kube-controller-manager
-
-}
 ```
 
 Results:
@@ -208,8 +234,6 @@ kube-controller-manager.pem
 Generate the `kube-proxy` client certificate and private key:
 
 ```
-{
-
 cat > kube-proxy-csr.json <<EOF
 {
   "CN": "system:kube-proxy",
@@ -219,11 +243,11 @@ cat > kube-proxy-csr.json <<EOF
   },
   "names": [
     {
-      "C": "US",
-      "L": "Portland",
+      "C": "Lisbon",
+      "L": "Lisbon",
       "O": "system:node-proxier",
       "OU": "Kubernetes The Hard Way",
-      "ST": "Oregon"
+      "ST": "Lisbon"
     }
   ]
 }
@@ -235,8 +259,6 @@ cfssl gencert \
   -config=ca-config.json \
   -profile=kubernetes \
   kube-proxy-csr.json | cfssljson -bare kube-proxy
-
-}
 ```
 
 Results:
@@ -251,8 +273,6 @@ kube-proxy.pem
 Generate the `kube-scheduler` client certificate and private key:
 
 ```
-{
-
 cat > kube-scheduler-csr.json <<EOF
 {
   "CN": "system:kube-scheduler",
@@ -262,11 +282,11 @@ cat > kube-scheduler-csr.json <<EOF
   },
   "names": [
     {
-      "C": "US",
-      "L": "Portland",
+      "C": "PT",
+      "L": "Lisbon",
       "O": "system:kube-scheduler",
       "OU": "Kubernetes The Hard Way",
-      "ST": "Oregon"
+      "ST": "Lisbon"
     }
   ]
 }
@@ -278,8 +298,6 @@ cfssl gencert \
   -config=ca-config.json \
   -profile=kubernetes \
   kube-scheduler-csr.json | cfssljson -bare kube-scheduler
-
-}
 ```
 
 Results:
@@ -296,16 +314,16 @@ The `kubernetes-the-hard-way` static IP address will be included in the list of 
 
 Generate the Kubernetes API Server certificate and private key:
 
-```
-{
-
-KUBERNETES_PUBLIC_ADDRESS=$(gcloud compute addresses describe kubernetes-the-hard-way \
-  --region $(gcloud config get-value compute/region) \
+<table style="width: 100vw;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="max-width:50vw;vertical-align:top;"><pre style="word-wrap:break-word;">
+KUBERNETES_PUBLIC_ADDRESS=$(gcloud compute addresses describe kubernetes-the-hard-way &bsol;
+  --region $(gcloud config get-value compute/region) &bsol;
   --format 'value(address)')
 
 KUBERNETES_HOSTNAMES=kubernetes,kubernetes.default,kubernetes.default.svc,kubernetes.default.svc.cluster,kubernetes.svc.cluster.local
 
-cat > kubernetes-csr.json <<EOF
+cat > kubernetes-csr.json <&lt;EOF
 {
   "CN": "kubernetes",
   "key": {
@@ -314,26 +332,67 @@ cat > kubernetes-csr.json <<EOF
   },
   "names": [
     {
-      "C": "US",
-      "L": "Portland",
+      "C": "PT",
+      "L": "Lisbon",
       "O": "Kubernetes",
       "OU": "Kubernetes The Hard Way",
-      "ST": "Oregon"
+      "ST": "Lisbon"
     }
   ]
 }
 EOF
 
-cfssl gencert \
-  -ca=ca.pem \
-  -ca-key=ca-key.pem \
-  -config=ca-config.json \
-  -hostname=10.32.0.1,10.240.0.10,10.240.0.11,10.240.0.12,${KUBERNETES_PUBLIC_ADDRESS},127.0.0.1,${KUBERNETES_HOSTNAMES} \
-  -profile=kubernetes \
+cfssl gencert &bsol;
+  -ca=ca.pem &bsol;
+  -ca-key=ca-key.pem &bsol;
+  -config=ca-config.json &bsol;
+  -hostname=10.32.0.1,10.240.0.10,10.240.0.11,10.240.0.12,${KUBERNETES_PUBLIC_ADDRESS},127.0.0.1,${KUBERNETES_HOSTNAMES} &bsol;
+  -profile=kubernetes &bsol;
   kubernetes-csr.json | cfssljson -bare kubernetes
+</pre></td>
+<td style="max-width:50vw;vertical-align:top"><pre>
+export KUBERNETES_PUBLIC_ADDRESS=$(exo eip list -O json | jq ".[].ip_address" | tr -d '"')
 
+export KUBERNETES_HOSTNAMES=kubernetes,kubernetes.default,kubernetes.default.svc,kubernetes.default.svc.cluster,kubernetes.svc.cluster.local
+
+cat > kubernetes-csr.json <&lt;EOF
+{
+  "CN": "kubernetes",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "PT",
+      "L": "Lisbon",
+      "O": "Kubernetes",
+      "OU": "Kubernetes The Hard Way",
+      "ST": "Lisbon"
+    }
+  ]
 }
-```
+EOF
+</pre>
+<blockquote>
+Don't forget to grab the controller ips and use them in the
+<i>--hostname</i> part. To grab all privnet ips:
+</blockquote>
+
+<pre>
+exo vm list -O json | jq ".[].ip_address" | tr -d '"' | xargs -n1 -P6 -I '{}' ssh ubuntu@'{}' -C 'echo $(hostname); ip addr show eth1 | grep global'
+</pre>
+
+<pre>
+cfssl gencert &bsol;
+  -ca=ca.pem &bsol;
+  -ca-key=ca-key.pem &bsol;
+  -config=ca-config.json &bsol;
+  -hostname=10.32.0.1,10.240.0.222,10.240.0.241,10.240.0.213,${KUBERNETES_PUBLIC_ADDRESS},127.0.0.1,${KUBERNETES_HOSTNAMES} &bsol;
+  -profile=kubernetes &bsol;
+  kubernetes-csr.json | cfssljson -bare kubernetes
+</pre></td></tr></table>
+
 
 > The Kubernetes API server is automatically assigned the `kubernetes` internal dns name, which will be linked to the first IP address (`10.32.0.1`) from the address range (`10.32.0.0/24`) reserved for internal cluster services during the [control plane bootstrapping](08-bootstrapping-kubernetes-controllers.md#configure-the-kubernetes-api-server) lab.
 
@@ -344,6 +403,7 @@ kubernetes-key.pem
 kubernetes.pem
 ```
 
+
 ## The Service Account Key Pair
 
 The Kubernetes Controller Manager leverages a key pair to generate and sign service account tokens as described in the [managing service accounts](https://kubernetes.io/docs/admin/service-accounts-admin/) documentation.
@@ -351,8 +411,6 @@ The Kubernetes Controller Manager leverages a key pair to generate and sign serv
 Generate the `service-account` certificate and private key:
 
 ```
-{
-
 cat > service-account-csr.json <<EOF
 {
   "CN": "service-accounts",
@@ -362,11 +420,11 @@ cat > service-account-csr.json <<EOF
   },
   "names": [
     {
-      "C": "US",
-      "L": "Portland",
+      "C": "PT",
+      "L": "Lisbon",
       "O": "Kubernetes",
       "OU": "Kubernetes The Hard Way",
-      "ST": "Oregon"
+      "ST": "Lisbon"
     }
   ]
 }
@@ -378,8 +436,6 @@ cfssl gencert \
   -config=ca-config.json \
   -profile=kubernetes \
   service-account-csr.json | cfssljson -bare service-account
-
-}
 ```
 
 Results:
@@ -394,20 +450,40 @@ service-account.pem
 
 Copy the appropriate certificates and private keys to each worker instance:
 
-```
+<table style="width: 100vw;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="max-width:50vw;vertical-align:top"><pre>
 for instance in worker-0 worker-1 worker-2; do
   gcloud compute scp ca.pem ${instance}-key.pem ${instance}.pem ${instance}:~/
 done
-```
+</pre></td>
+<td style="max-width:50vw;vertical-align:top"><pre>
+for instance in worker-0 worker-1 worker-2; do
+  ip=$(exo vm show ${instance} -O json | jq .ip_address | tr -d '"')
+  scp ca.pem ${instance}-key.pem ${instance}.pem ubuntu@${ip}:~/
+done
+</pre></td></tr></table>
+
 
 Copy the appropriate certificates and private keys to each controller instance:
 
-```
+
+<table style="width: 100vw;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="max-width:50vw;vertical-align:top"><pre>
 for instance in controller-0 controller-1 controller-2; do
   gcloud compute scp ca.pem ca-key.pem kubernetes-key.pem kubernetes.pem \
     service-account-key.pem service-account.pem ${instance}:~/
 done
-```
+</pre></td>
+<td style="max-width:50vw;vertical-align:top"><pre>
+for instance in controller-0 controller-1 controller-2; do
+  ip=$(exo vm show ${instance} -O json | jq .ip_address | tr -d '"')
+  scp ca.pem ca-key.pem kubernetes-key.pem kubernetes.pem \
+    service-account-key.pem service-account.pem ubuntu@${ip}:~/
+done
+</pre></td></tr></table>
+
 
 > The `kube-proxy`, `kube-controller-manager`, `kube-scheduler`, and `kubelet` client certificates will be used to generate client authentication configuration files in the next lab.
 

@@ -6,9 +6,14 @@ In this lab you will bootstrap the Kubernetes control plane across three compute
 
 The commands in this lab must be run on each controller instance: `controller-0`, `controller-1`, and `controller-2`. Login to each controller instance using the `gcloud` command. Example:
 
-```
+<table style="width: 100vw;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="max-width:50vw;vertical-align:top"><pre>
 gcloud compute ssh controller-0
-```
+</pre></td>
+<td style="max-width:50vw;vertical-align:top"><pre>
+exo ssh controller-0
+</pre></td></tr></table>
 
 ### Running commands in parallel with tmux
 
@@ -37,68 +42,72 @@ wget -q --show-progress --https-only --timestamping \
 Install the Kubernetes binaries:
 
 ```
-{
   chmod +x kube-apiserver kube-controller-manager kube-scheduler kubectl
   sudo mv kube-apiserver kube-controller-manager kube-scheduler kubectl /usr/local/bin/
-}
 ```
 
 ### Configure the Kubernetes API Server
 
 ```
-{
   sudo mkdir -p /var/lib/kubernetes/
 
   sudo mv ca.pem ca-key.pem kubernetes-key.pem kubernetes.pem \
     service-account-key.pem service-account.pem \
     encryption-config.yaml /var/lib/kubernetes/
-}
 ```
 
 The instance internal IP address will be used to advertise the API Server to members of the cluster. Retrieve the internal IP address for the current compute instance:
 
-```
+<table style="width: 100vw;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="max-width:50vw;vertical-align:top"><pre>
 INTERNAL_IP=$(curl -s -H "Metadata-Flavor: Google" \
   http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/ip)
-```
+</pre></td>
+<td style="max-width:50vw;vertical-align:top"><pre>
+export INTERNAL_IP=$(ip addr show eth1  | grep -Po 'inet \K[\d.]+')
+</pre></td></tr></table>
 
 Create the `kube-apiserver.service` systemd unit file:
 
-```
-cat <<EOF | sudo tee /etc/systemd/system/kube-apiserver.service
+
+<table style="width: 100vw;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="max-width:50vw;vertical-align:top"><pre>
+cat <&lt;EOF | sudo tee /etc/systemd/system/kube-apiserver.service
 [Unit]
 Description=Kubernetes API Server
 Documentation=https://github.com/kubernetes/kubernetes
 
 [Service]
-ExecStart=/usr/local/bin/kube-apiserver \\
-  --advertise-address=${INTERNAL_IP} \\
-  --allow-privileged=true \\
-  --apiserver-count=3 \\
-  --audit-log-maxage=30 \\
-  --audit-log-maxbackup=3 \\
-  --audit-log-maxsize=100 \\
-  --audit-log-path=/var/log/audit.log \\
-  --authorization-mode=Node,RBAC \\
-  --bind-address=0.0.0.0 \\
-  --client-ca-file=/var/lib/kubernetes/ca.pem \\
-  --enable-admission-plugins=NamespaceLifecycle,NodeRestriction,LimitRanger,ServiceAccount,DefaultStorageClass,ResourceQuota \\
-  --etcd-cafile=/var/lib/kubernetes/ca.pem \\
-  --etcd-certfile=/var/lib/kubernetes/kubernetes.pem \\
-  --etcd-keyfile=/var/lib/kubernetes/kubernetes-key.pem \\
-  --etcd-servers=https://10.240.0.10:2379,https://10.240.0.11:2379,https://10.240.0.12:2379 \\
-  --event-ttl=1h \\
-  --encryption-provider-config=/var/lib/kubernetes/encryption-config.yaml \\
-  --kubelet-certificate-authority=/var/lib/kubernetes/ca.pem \\
-  --kubelet-client-certificate=/var/lib/kubernetes/kubernetes.pem \\
-  --kubelet-client-key=/var/lib/kubernetes/kubernetes-key.pem \\
-  --kubelet-https=true \\
-  --runtime-config=api/all \\
-  --service-account-key-file=/var/lib/kubernetes/service-account.pem \\
-  --service-cluster-ip-range=10.32.0.0/24 \\
-  --service-node-port-range=30000-32767 \\
-  --tls-cert-file=/var/lib/kubernetes/kubernetes.pem \\
-  --tls-private-key-file=/var/lib/kubernetes/kubernetes-key.pem \\
+ExecStart=/usr/local/bin/kube-apiserver &bsol;
+  --advertise-address=${INTERNAL_IP} &bsol;
+  --allow-privileged=true &bsol;
+  --apiserver-count=3 &bsol;
+  --audit-log-maxage=30 &bsol;
+  --audit-log-maxbackup=3 &bsol;
+  --audit-log-maxsize=100 &bsol;
+  --audit-log-path=/var/log/audit.log &bsol;
+  --authorization-mode=Node,RBAC &bsol;
+  --bind-address=0.0.0.0 &bsol;
+  --client-ca-file=/var/lib/kubernetes/ca.pem &bsol;
+  --enable-admission-plugins=NamespaceLifecycle,NodeRestriction,LimitRanger,ServiceAccount,DefaultStorageClass,ResourceQuota &bsol;
+  --etcd-cafile=/var/lib/kubernetes/ca.pem &bsol;
+  --etcd-certfile=/var/lib/kubernetes/kubernetes.pem &bsol;
+  --etcd-keyfile=/var/lib/kubernetes/kubernetes-key.pem &bsol;
+  --etcd-servers=https://10.240.0.10:2379,https://10.240.0.11:2379,https://10.240.0.12:2379 &bsol;
+  --event-ttl=1h &bsol;
+  --encryption-provider-config=/var/lib/kubernetes/encryption-config.yaml &bsol;
+  --kubelet-certificate-authority=/var/lib/kubernetes/ca.pem &bsol;
+  --kubelet-client-certificate=/var/lib/kubernetes/kubernetes.pem &bsol;
+  --kubelet-client-key=/var/lib/kubernetes/kubernetes-key.pem &bsol;
+  --kubelet-https=true &bsol;
+  --runtime-config=api/all &bsol;
+  --service-account-key-file=/var/lib/kubernetes/service-account.pem &bsol;
+  --service-cluster-ip-range=10.32.0.0/24 &bsol;
+  --service-node-port-range=30000-32767 &bsol;
+  --tls-cert-file=/var/lib/kubernetes/kubernetes.pem &bsol;
+  --tls-private-key-file=/var/lib/kubernetes/kubernetes-key.pem &bsol;
   --v=2
 Restart=on-failure
 RestartSec=5
@@ -106,7 +115,55 @@ RestartSec=5
 [Install]
 WantedBy=multi-user.target
 EOF
-```
+</pre></td>
+<td style="max-width:50vw;vertical-align:top">
+
+> Get the controllers internal ips, use that in `--etcd-servers`
+
+<pre>
+cat <&lt;EOF | sudo tee /etc/systemd/system/kube-apiserver.service
+[Unit]
+Description=Kubernetes API Server
+Documentation=https://github.com/kubernetes/kubernetes
+
+[Service]
+ExecStart=/usr/local/bin/kube-apiserver &bsol;
+  --advertise-address=${INTERNAL_IP} &bsol;
+  --allow-privileged=true &bsol;
+  --apiserver-count=3 &bsol;
+  --audit-log-maxage=30 &bsol;
+  --audit-log-maxbackup=3 &bsol;
+  --audit-log-maxsize=100 &bsol;
+  --audit-log-path=/var/log/audit.log &bsol;
+  --authorization-mode=Node,RBAC &bsol;
+  --bind-address=0.0.0.0 &bsol;
+  --client-ca-file=/var/lib/kubernetes/ca.pem &bsol;
+  --enable-admission-plugins=NamespaceLifecycle,NodeRestriction,LimitRanger,ServiceAccount,DefaultStorageClass,ResourceQuota &bsol;
+  --etcd-cafile=/var/lib/kubernetes/ca.pem &bsol;
+  --etcd-certfile=/var/lib/kubernetes/kubernetes.pem &bsol;
+  --etcd-keyfile=/var/lib/kubernetes/kubernetes-key.pem &bsol;
+  --etcd-servers=https://10.240.0.241:2379,https://10.240.0.213:2379,https://10.240.0.222:2379 &bsol;
+  --event-ttl=1h &bsol;
+  --encryption-provider-config=/var/lib/kubernetes/encryption-config.yaml &bsol;
+  --kubelet-certificate-authority=/var/lib/kubernetes/ca.pem &bsol;
+  --kubelet-client-certificate=/var/lib/kubernetes/kubernetes.pem &bsol;
+  --kubelet-client-key=/var/lib/kubernetes/kubernetes-key.pem &bsol;
+  --kubelet-https=true &bsol;
+  --runtime-config=api/all &bsol;
+  --service-account-key-file=/var/lib/kubernetes/service-account.pem &bsol;
+  --service-cluster-ip-range=10.32.0.0/24 &bsol;
+  --service-node-port-range=30000-32767 &bsol;
+  --tls-cert-file=/var/lib/kubernetes/kubernetes.pem &bsol;
+  --tls-private-key-file=/var/lib/kubernetes/kubernetes-key.pem &bsol;
+  --v=2
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+</pre></td></tr></table>
+
 
 ### Configure the Kubernetes Controller Manager
 
@@ -125,18 +182,18 @@ Description=Kubernetes Controller Manager
 Documentation=https://github.com/kubernetes/kubernetes
 
 [Service]
-ExecStart=/usr/local/bin/kube-controller-manager \\
-  --address=0.0.0.0 \\
-  --cluster-cidr=10.200.0.0/16 \\
-  --cluster-name=kubernetes \\
-  --cluster-signing-cert-file=/var/lib/kubernetes/ca.pem \\
-  --cluster-signing-key-file=/var/lib/kubernetes/ca-key.pem \\
-  --kubeconfig=/var/lib/kubernetes/kube-controller-manager.kubeconfig \\
-  --leader-elect=true \\
-  --root-ca-file=/var/lib/kubernetes/ca.pem \\
-  --service-account-private-key-file=/var/lib/kubernetes/service-account-key.pem \\
-  --service-cluster-ip-range=10.32.0.0/24 \\
-  --use-service-account-credentials=true \\
+ExecStart=/usr/local/bin/kube-controller-manager \
+  --address=0.0.0.0 \
+  --cluster-cidr=10.200.0.0/16 \
+  --cluster-name=kubernetes \
+  --cluster-signing-cert-file=/var/lib/kubernetes/ca.pem \
+  --cluster-signing-key-file=/var/lib/kubernetes/ca-key.pem \
+  --kubeconfig=/var/lib/kubernetes/kube-controller-manager.kubeconfig \
+  --leader-elect=true \
+  --root-ca-file=/var/lib/kubernetes/ca.pem \
+  --service-account-private-key-file=/var/lib/kubernetes/service-account-key.pem \
+  --service-cluster-ip-range=10.32.0.0/24 \
+  --use-service-account-credentials=true \
   --v=2
 Restart=on-failure
 RestartSec=5
@@ -145,6 +202,7 @@ RestartSec=5
 WantedBy=multi-user.target
 EOF
 ```
+
 
 ### Configure the Kubernetes Scheduler
 
@@ -190,18 +248,21 @@ EOF
 ### Start the Controller Services
 
 ```
-{
   sudo systemctl daemon-reload
   sudo systemctl enable kube-apiserver kube-controller-manager kube-scheduler
   sudo systemctl start kube-apiserver kube-controller-manager kube-scheduler
-}
 ```
 
 > Allow up to 10 seconds for the Kubernetes API Server to fully initialize.
 
 ### Enable HTTP Health Checks
 
+
+> Exoscale's Network Load Balancer is in the works. You can set up nginx anyway.
+
 A [Google Network Load Balancer](https://cloud.google.com/compute/docs/load-balancing/network) will be used to distribute traffic across the three API servers and allow each API server to terminate TLS connections and validate client certificates. The network load balancer only supports HTTP health checks which means the HTTPS endpoint exposed by the API server cannot be used. As a workaround the nginx webserver can be used to proxy HTTP health checks. In this section nginx will be installed and configured to accept HTTP health checks on port `80` and proxy the connections to the API server on `https://127.0.0.1:6443/healthz`.
+
+
 
 > The `/healthz` API server endpoint does not require authentication by default.
 
@@ -227,12 +288,10 @@ EOF
 ```
 
 ```
-{
   sudo mv kubernetes.default.svc.cluster.local \
     /etc/nginx/sites-available/kubernetes.default.svc.cluster.local
 
   sudo ln -s /etc/nginx/sites-available/kubernetes.default.svc.cluster.local /etc/nginx/sites-enabled/
-}
 ```
 
 ```
@@ -278,13 +337,15 @@ ok
 
 > Remember to run the above commands on each controller node: `controller-0`, `controller-1`, and `controller-2`.
 
+----
+
 ## RBAC for Kubelet Authorization
 
 In this section you will configure RBAC permissions to allow the Kubernetes API Server to access the Kubelet API on each worker node. Access to the Kubelet API is required for retrieving metrics, logs, and executing commands in pods.
 
 > This tutorial sets the Kubelet `--authorization-mode` flag to `Webhook`. Webhook mode uses the [SubjectAccessReview](https://kubernetes.io/docs/admin/authorization/#checking-api-access) API to determine authorization.
 
-The commands in this section will effect the entire cluster and only need to be run once from one of the controller nodes.
+The commands in this section will effect the entire cluster **and only need to be run once from one of the controller nodes**.
 
 ```
 gcloud compute ssh controller-0
@@ -338,7 +399,12 @@ subjects:
 EOF
 ```
 
+----
+
+
 ## The Kubernetes Frontend Load Balancer
+
+> Exoscale doesn't yet have a network load balancer. We will use HAProxy as a tcp load balancer.
 
 In this section you will provision an external load balancer to front the Kubernetes API Servers. The `kubernetes-the-hard-way` static IP address will be attached to the resulting load balancer.
 
@@ -348,6 +414,79 @@ In this section you will provision an external load balancer to front the Kubern
 ### Provision a Network Load Balancer
 
 Create the external load balancer network resources:
+
+
+```
+export KUBERNETES_PUBLIC_ADDRESS=$(exo eip list -O json | jq ".[].ip_address" | tr -d '"')
+
+exo firewall create kubernetes-lb-allow-all
+;; TODO limit firewall rules
+exo firewall add kubernetes-lb-allow-all -p tcp -P 0-65535 -c 0.0.0.0/0
+exo firewall add kubernetes-lb-allow-all -p tcp -P 0-65535 -c 0.0.0.0/0 -e
+exo vm create load-balancer -t "Linux Ubuntu 18.04 LTS 64-bit" -p kubernetes -s kubernetes-lb-allow-all -o micro -k id_rsa_portal 
+exo eip associate $KUBERNETES_PUBLIC_ADDRESS load-balancer
+
+;; configure haproxy
+cat > haproxy.cfg <<EOF
+global
+  ssl-server-verify none
+
+defaults
+  mode http
+  timeout connect 5000ms
+  timeout client 50000ms
+  timeout server 50000ms
+
+backend controllers
+  mode tcp
+  balance roundrobin
+  option ssl-hello-chk
+  # use the controller's ips
+  # TODO move this to privnet?
+  server controller-0 194.182.163.52:6443 check
+  server controller-1 194.182.162.6:6443 check
+  server controller-2 194.182.163.135:6443 check
+
+frontend lb
+  bind *:6443
+  option tcplog
+  mode tcp
+  default_backend controllers
+  log /dev/log local0 debug
+EOF
+
+;; configure netplan
+
+cat > 51-eip.yml <<EOF
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    lo:
+      match:
+        name: lo
+      addresses:
+        - 194.182.160.189/32
+EOF
+
+exo ssh load-balancer
+sudo apt-get install -y haproxy
+
+sudo ip addr add 194.182.160.189/32 dev lo
+
+sudo mv 51-eip.yml /etc/netplan/51-eip.yml
+sudo netplan apply
+
+sudo mv haproxy.cfg /etc/haproxy/haproxy.cfg
+sudo service haproxy restart
+exit
+
+;;test
+curl --cacert ca.pem https://${KUBERNETES_PUBLIC_ADDRESS}:6443/version
+
+```
+
+
 
 ```
 {

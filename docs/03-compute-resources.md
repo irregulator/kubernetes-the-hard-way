@@ -16,19 +16,31 @@ In this section a dedicated [Virtual Private Cloud](https://cloud.google.com/com
 
 Create the `kubernetes-the-hard-way` custom VPC network:
 
-```
+<table style="width: 100%;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="width:50%;vertical-align:top"><pre>
 gcloud compute networks create kubernetes-the-hard-way --subnet-mode custom
-```
+</pre></td>
+<td style="vertical-align:top"><pre>
+exo privnet create kubernetes -s 10.240.0.1 -e 10.240.0.253 -m "255.255.255.0"
+</pre></td></tr></table>
+
 
 A [subnet](https://cloud.google.com/compute/docs/vpc/#vpc_networks_and_subnets) must be provisioned with an IP address range large enough to assign a private IP address to each node in the Kubernetes cluster.
 
 Create the `kubernetes` subnet in the `kubernetes-the-hard-way` VPC network:
 
-```
+<table style="width: 100%;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="width:50%;vertical-align:top"><pre>
 gcloud compute networks subnets create kubernetes \
   --network kubernetes-the-hard-way \
   --range 10.240.0.0/24
-```
+</pre></td>
+<td style="vertical-align:top"><pre>
+???
+</pre></td></tr></table>
+
 
 > The `10.240.0.0/24` IP address range can host up to 254 compute instances.
 
@@ -36,21 +48,44 @@ gcloud compute networks subnets create kubernetes \
 
 Create a firewall rule that allows internal communication across all protocols:
 
-```
+
+<table style="width: 100%;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="width:50%;vertical-align:top"><pre>
 gcloud compute firewall-rules create kubernetes-the-hard-way-allow-internal \
   --allow tcp,udp,icmp \
   --network kubernetes-the-hard-way \
   --source-ranges 10.240.0.0/24,10.200.0.0/16
-```
+</pre></td>
+<td style="vertical-align:top"><pre>
+exo firewall create kubernetes-allow-internal
+exo firewall add kubernetes-allow-internal -p tcp -P 0-65535 -c 10.240.0.0/24
+exo firewall add kubernetes-allow-internal -p udp -P 0-65535 -c 10.240.0.0/24
+exo firewall add kubernetes-allow-internal -p icmp -P 0-65535 -c 10.240.0.0/24
+
+exo firewall add kubernetes-allow-internal -p tcp -P 0-65535 -c 10.200.0.0/24
+exo firewall add kubernetes-allow-internal -p udp -P 0-65535 -c 10.200.0.0/24
+exo firewall add kubernetes-allow-internal -p icmp -P 0-65535 -c 10.200.0.0/24
+</pre></td></tr></table>
+
 
 Create a firewall rule that allows external SSH, ICMP, and HTTPS:
 
-```
+
+<table style="width: 100%;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="width:50%;vertical-align:top"><pre>
 gcloud compute firewall-rules create kubernetes-the-hard-way-allow-external \
   --allow tcp:22,tcp:6443,icmp \
   --network kubernetes-the-hard-way \
   --source-ranges 0.0.0.0/0
-```
+</pre></td>
+<td><pre>
+exo firewall create kubernetes-allow-external
+exo firewall add kubernetes-allow-external -p icmp -c 0.0.0.0/0
+exo firewall add kubernetes-allow-external -p tcp -P 22,6443 -c 0.0.0.0/0
+</pre></td></tr></table>
+
 
 > An [external load balancer](https://cloud.google.com/compute/docs/load-balancing/network/) will be used to expose the Kubernetes API Servers to remote clients.
 
@@ -60,6 +95,16 @@ List the firewall rules in the `kubernetes-the-hard-way` VPC network:
 gcloud compute firewall-rules list --filter="network:kubernetes-the-hard-way"
 ```
 
+<table style="width: 100%;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="width:50%;vertical-align:top"><pre>
+gcloud compute firewall-rules list --filter="network:kubernetes-the-hard-way"
+</pre></td>
+<td style="vertical-align:top"><pre>
+exo firewall show kubernetes-allow-internal -O text
+exo firewall show kubernetes-allow-external
+</pre></td></tr></table>
+
 > output
 
 ```
@@ -68,26 +113,67 @@ kubernetes-the-hard-way-allow-external  kubernetes-the-hard-way  INGRESS    1000
 kubernetes-the-hard-way-allow-internal  kubernetes-the-hard-way  INGRESS    1000      tcp,udp,icmp
 ```
 
+> exoscale output (redacted)
+
+```
+┼─────────┼────────────────────┼──────────────────┼──────────┼
+│  TYPE   │       SOURCE       │       PORT       │ PROTOCOL │
+┼─────────┼────────────────────┼──────────────────┼──────────┼
+│ ingress │ CIDR 10.240.0.0/24 │ 0,0 (Echo Reply) │ icmp     │
+│ ingress │ CIDR 10.200.0.0/24 │ 0,0 (Echo Reply) │ icmp     │
+│ ingress │ CIDR 10.240.0.0/24 │ 0-65535          │ tcp      │
+│ ingress │ CIDR 10.200.0.0/24 │ 0-65535          │ tcp      │
+│ ingress │ CIDR 10.240.0.0/24 │ 0-65535          │ udp      │
+│ ingress │ CIDR 10.200.0.0/24 │ 0-65535          │ udp      │
+┼─────────┼────────────────────┼──────────────────┼──────────┼
+
+┼─────────┼────────────────┼──────────────────┼──────────┼
+│  TYPE   │     SOURCE     │       PORT       │ PROTOCOL │
+┼─────────┼────────────────┼──────────────────┼──────────┼
+│ ingress │ CIDR 0.0.0.0/0 │ 0,0 (Echo Reply) │ icmp     │
+│ ingress │ CIDR 0.0.0.0/0 │ 22               │ tcp      │
+│ ingress │ CIDR 0.0.0.0/0 │ 6443             │ tcp      │
+┼─────────┼────────────────┼──────────────────┼──────────┼
+```
+
 ### Kubernetes Public IP Address
 
 Allocate a static IP address that will be attached to the external load balancer fronting the Kubernetes API Servers:
 
-```
+<table style="width: 100%;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="width:50%;vertical-align:top"><pre>
 gcloud compute addresses create kubernetes-the-hard-way \
   --region $(gcloud config get-value compute/region)
-```
+</pre></td>
+<td style="vertical-align:top"><pre>
+exo eip create
+</pre></td></tr></table>
+
 
 Verify the `kubernetes-the-hard-way` static IP address was created in your default compute region:
 
-```
+<table style="width: 100%;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="width:50%;vertical-align:top"><pre>
 gcloud compute addresses list --filter="name=('kubernetes-the-hard-way')"
-```
+</pre></td>
+<td style="vertical-align:top"><pre>
+exo eip list -O text
+</pre></td></tr></table>
+
 
 > output
 
 ```
 NAME                     REGION    ADDRESS        STATUS
 kubernetes-the-hard-way  us-west1  XX.XXX.XXX.XX  RESERVED
+```
+
+> exoscale output
+
+```
+c05b1471-d1ea-43f1-a67d-36b3dc24bcee  ch-gva-2  194.182.xxx.xxx   false []
 ```
 
 ## Compute Instances
@@ -98,7 +184,9 @@ The compute instances in this lab will be provisioned using [Ubuntu Server](http
 
 Create three compute instances which will host the Kubernetes control plane:
 
-```
+<table style="width: 100%;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="width:50%;vertical-align:top"><pre>
 for i in 0 1 2; do
   gcloud compute instances create controller-${i} \
     --async \
@@ -112,7 +200,48 @@ for i in 0 1 2; do
     --subnet kubernetes \
     --tags kubernetes-the-hard-way,controller
 done
-```
+</pre></td>
+<td style="vertical-align:top">
+<blockquote>
+Ensure you have an ssh key named id_rsa_portal under ~/.ssh/
+</blockquote>
+<br>
+<blockquote>
+Kubernetes requires at least 2GB for master nodes and 1GB for worker nodes.
+GCP n1-standard-1 have 4GB.
+</blockquote>
+<pre>
+for i in 0 1 2; do
+  exo vm create controller-${i} -t "Linux Ubuntu 18.04 LTS 64-bit" -p kubernetes -s kubernetes-allow-internal,kubernetes-allow-external -o small -k id_rsa_portal
+done
+</pre>
+
+<blockquote>
+Configure DHCP for the privnet
+https://community.exoscale.com/documentation/compute/private-networks/
+</blockquote>
+<pre>
+ssh ubuntu@194.182.xxx.xxx
+
+;; no dhcp on eth1 which is the privnet iface
+ip addr show eth1
+
+sudo nano /etc/netplan/eth1.yaml
+
+network:
+  version: 2
+  ethernets:
+    eth1:
+      dhcp4: true
+
+sudo netplan apply
+ip addr show eth1
+
+3: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 0a:ea:14:00:8b:b3 brd ff:ff:ff:ff:ff:ff
+    inet 10.240.0.138/24 brd 10.0.0.255 scope global dynamic eth1
+</pre>
+</td></tr></table>
 
 ### Kubernetes Workers
 
@@ -122,7 +251,9 @@ Each worker instance requires a pod subnet allocation from the Kubernetes cluste
 
 Create three compute instances which will host the Kubernetes worker nodes:
 
-```
+<table style="width: 100%;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="width:50%;vertical-align:top"><pre>
 for i in 0 1 2; do
   gcloud compute instances create worker-${i} \
     --async \
@@ -137,15 +268,63 @@ for i in 0 1 2; do
     --subnet kubernetes \
     --tags kubernetes-the-hard-way,worker
 done
-```
+</pre></td>
+<td style="vertical-align:top">
+<br>
+<blockquote>
+Ensure you have an ssh key named id_rsa_portal under ~/.ssh/
+</blockquote>
+<br>
+<blockquote>
+Kubernetes requires at least 2GB for master nodes and 1GB for worker nodes.
+GCP n1-standard-1 have 4GB.
+</blockquote>
+<pre>
+for i in 0 1 2; do
+  exo vm create worker-${i} -t "Linux Ubuntu 18.04 LTS 64-bit" -p kubernetes -s kubernetes-allow-internal,kubernetes-allow-external -o small -k id_rsa_portal
+done
+</pre>
+
+<blockquote>
+Configure DHCP for the privnet
+https://community.exoscale.com/documentation/compute/private-networks/
+</blockquote>
+<pre>
+ssh ubuntu@194.182.xxx.xxx
+
+;; no dhcp on eth1 which is the privnet iface
+ip addr show eth1
+
+sudo nano /etc/netplan/eth1.yaml
+
+network:
+  version: 2
+  ethernets:
+    eth1:
+      dhcp4: true
+
+sudo netplan apply
+ip addr show eth1
+
+3: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 0a:ea:14:00:8b:b3 brd ff:ff:ff:ff:ff:ff
+    inet 10.240.0.138/24 brd 10.0.0.255 scope global dynamic eth1
+</pre>
+</td></tr></table>
+
 
 ### Verification
 
 List the compute instances in your default compute zone:
 
-```
+<table style="width: 100%;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="width:50%;vertical-align:top"><pre>
 gcloud compute instances list
-```
+</pre></td>
+<td style="vertical-align:top"><pre>
+exo vm list
+</pre></td></tr></table>
 
 > output
 
@@ -157,6 +336,39 @@ controller-2  us-west1-c  n1-standard-1               10.240.0.12  XX.XXX.XXX.XX
 worker-0      us-west1-c  n1-standard-1               10.240.0.20  XXX.XXX.XXX.XX  RUNNING
 worker-1      us-west1-c  n1-standard-1               10.240.0.21  XX.XXX.XX.XXX   RUNNING
 worker-2      us-west1-c  n1-standard-1               10.240.0.22  XXX.XXX.XX.XX   RUNNING
+```
+
+> exoscale output
+
+```
+e17c726e-4548-4668-ac84-aaf95194b001    controller-1    Small   ch-gva-2        Running 194.xxx.xxx.xx
+c17313c8-52c6-455e-b4db-2594ed6368e6    controller-0    Small   ch-gva-2        Running 194.xxx.xxx.xx
+23e9e044-f77c-457a-8876-ac957155ad25    worker-2        Small   ch-gva-2        Running 194.xxx.xxx.xx
+17888481-cd56-4845-a423-f6fbce7543be    worker-1        Small   ch-gva-2        Running 194.xxx.xxx.xx
+de5922b6-2511-43f8-a9db-75c165b0542b    worker-0        Small   ch-gva-2        Running 194.xxx.xxx.xx
+e5303af6-ade9-49c1-98d5-0b413babbc5a    controller-2    Small   ch-gva-2        Running 194.xxx.xxx.xx
+```
+> exoscale validate the ips
+
+```
+exo vm list -O json | jq ".[].ip_address" | tr -d '"' | xargs -n1 -P6 -I '{}' ssh ubuntu@'{}' -C 'echo $(hostname); ip addr show eth1 | grep global'
+```
+> exoscale output
+
+```
+worker-0
+    inet 10.240.0.103/24 brd 10.240.0.255 scope global dynamic eth1
+controller-0
+    inet 10.240.0.241/24 brd 10.240.0.255 scope global dynamic eth1
+controller-2
+    inet 10.240.0.222/24 brd 10.240.0.255 scope global dynamic eth1
+worker-1
+    inet 10.240.0.31/24 brd 10.240.0.255 scope global dynamic eth1
+controller-1
+    inet 10.240.0.213/24 brd 10.240.0.255 scope global dynamic eth1
+worker-2
+    inet 10.240.0.139/24 brd 10.240.0.255 scope global dynamic eth1
+
 ```
 
 ## Configuring SSH Access

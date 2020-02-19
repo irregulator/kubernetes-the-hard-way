@@ -6,9 +6,15 @@ Kubernetes components are stateless and store cluster state in [etcd](https://gi
 
 The commands in this lab must be run on each controller instance: `controller-0`, `controller-1`, and `controller-2`. Login to each controller instance using the `gcloud` command. Example:
 
-```
+<table style="width: 100vw;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="max-width:50vw;vertical-align:top"><pre>
 gcloud compute ssh controller-0
-```
+</pre></td>
+<td style="max-width:50vw;vertical-align:top"><pre>
+exo ssh controller-0
+</pre></td></tr></table>
+
 
 ### Running commands in parallel with tmux
 
@@ -28,38 +34,50 @@ wget -q --show-progress --https-only --timestamping \
 Extract and install the `etcd` server and the `etcdctl` command line utility:
 
 ```
-{
   tar -xvf etcd-v3.4.0-linux-amd64.tar.gz
   sudo mv etcd-v3.4.0-linux-amd64/etcd* /usr/local/bin/
-}
 ```
 
 ### Configure the etcd Server
 
 ```
-{
   sudo mkdir -p /etc/etcd /var/lib/etcd
   sudo cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/
-}
 ```
 
 The instance internal IP address will be used to serve client requests and communicate with etcd cluster peers. Retrieve the internal IP address for the current compute instance:
 
-```
+<table style="width: 100vw;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="max-width:50vw;vertical-align:top"><pre>
 INTERNAL_IP=$(curl -s -H "Metadata-Flavor: Google" \
   http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/ip)
-```
+</pre></td>
+<td style="max-width:50vw;vertical-align:top"><pre>
+export INTERNAL_IP=$(ip addr show eth1  | grep -Po 'inet \K[\d.]+')
+</pre></td></tr></table>
+
 
 Each etcd member must have a unique name within an etcd cluster. Set the etcd name to match the hostname of the current compute instance:
 
-```
+<table style="width: 100vw;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="max-width:50vw;vertical-align:top"><pre>
 ETCD_NAME=$(hostname -s)
-```
+</pre></td>
+<td style="max-width:50vw;vertical-align:top"><pre>
+export ETCD_NAME=$(hostname -s)
+</pre></td></tr></table>
+
 
 Create the `etcd.service` systemd unit file:
 
-```
-cat <<EOF | sudo tee /etc/systemd/system/etcd.service
+> on Exoscale, make sure to use the internal ips for controller-* and pass it to `--initial-cluster`
+
+<table style="width: 100vw;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="max-width:50vw;vertical-align:top"><pre>
+cat <&lt;EOF | sudo tee /etc/systemd/system/etcd.service
 [Unit]
 Description=etcd
 Documentation=https://github.com/coreos
@@ -90,19 +108,62 @@ RestartSec=5
 [Install]
 WantedBy=multi-user.target
 EOF
-```
+</pre></td>
+<td style="max-width:50vw;vertical-align:top">
+
+> Get the controllers internal ips, use that in `--initial-cluster`
+
+<pre>
+cat <&lt;EOF | sudo tee /etc/systemd/system/etcd.service
+[Unit]
+Description=etcd
+Documentation=https://github.com/coreos
+
+[Service]
+Type=notify
+ExecStart=/usr/local/bin/etcd &bsol;
+  --name ${ETCD_NAME} &bsol;
+  --cert-file=/etc/etcd/kubernetes.pem &bsol;
+  --key-file=/etc/etcd/kubernetes-key.pem &bsol;
+  --peer-cert-file=/etc/etcd/kubernetes.pem &bsol;
+  --peer-key-file=/etc/etcd/kubernetes-key.pem &bsol;
+  --trusted-ca-file=/etc/etcd/ca.pem &bsol;
+  --peer-trusted-ca-file=/etc/etcd/ca.pem &bsol;
+  --peer-client-cert-auth &bsol;
+  --client-cert-auth &bsol;
+  --initial-advertise-peer-urls https://${INTERNAL_IP}:2380 &bsol;
+  --listen-peer-urls https://${INTERNAL_IP}:2380 &bsol;
+  --listen-client-urls https://${INTERNAL_IP}:2379,https://127.0.0.1:2379 &bsol;
+  --advertise-client-urls https://${INTERNAL_IP}:2379 &bsol;
+  --initial-cluster-token etcd-cluster-0 &bsol;
+  --initial-cluster controller-0=https://10.240.0.241:2380,controller-1=https://10.240.0.213:2380,controller-2=https://10.240.0.222:2380 &bsol;
+  --initial-cluster-state new &bsol;
+  --data-dir=/var/lib/etcd
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+</pre>
+
+> If you hit an error `(error "remote error: tls: bad certificate", ServerName "")`, it means
+you probably messed up the controllers ips on step 4. Go back, regenerate the certs with the proper
+ips, copy them over and redo the etcd bootstrap.
+
+</td></tr></table>
+
 
 ### Start the etcd Server
 
 ```
-{
   sudo systemctl daemon-reload
   sudo systemctl enable etcd
   sudo systemctl start etcd
-}
 ```
 
 > Remember to run the above commands on each controller node: `controller-0`, `controller-1`, and `controller-2`.
+
 
 ## Verification
 

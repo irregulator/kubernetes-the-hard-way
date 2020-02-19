@@ -50,6 +50,42 @@ gcloud config set compute/zone us-west1-c
 
 > Use the `gcloud compute zones list` command to view additional regions and zones.
 
+## Exoscale
+
+### Install the Exoscale CLI
+
+https://community.exoscale.com/documentation/tools/exoscale-command-line-interface/
+
+### Configure the Exoscale CLI
+
+Configure API keys and default zones:
+
+```
+exo config
+```
+
+Verify:
+
+```
+exo config show
+
+┼──────────────────────┼───────────────────────────────┼
+│       ACCOUNT        │                               │
+┼──────────────────────┼───────────────────────────────┼
+│ Name                 │ miguel.ping@exoscale.ch       │
+│ API Key              │ EXO××××××××××××××××××××××××   │
+│ API Secret           │ ×××××××××××××××××××××××××××   │
+│ Default Zone         │ ch-gva-2                      │
+│ Default Template     │ Linux Ubuntu 18.04 LTS 64-bit │
+│ Compute API Endpoint │ https://api.exoscale.ch/v1    │
+│ Storage API Endpoint │ https://sos-{zone}.exo.io     │
+│ DNS API Endpoint     │ https://api.exoscale.ch/dns   │
+┼──────────────────────┼───────────────────────────────┼
+```
+
+> Use the `exo zone` command to view additional regions and zones.
+
+
 ## Running Commands in Parallel with tmux
 
 [tmux](https://github.com/tmux/tmux/wiki) can be used to run commands on multiple compute instances at the same time. Labs in this tutorial may require running the same commands across multiple compute instances, in those cases consider using tmux and splitting a window into multiple panes with synchronize-panes enabled to speed up the provisioning process.

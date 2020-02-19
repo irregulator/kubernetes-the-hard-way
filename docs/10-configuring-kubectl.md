@@ -10,28 +10,47 @@ Each kubeconfig requires a Kubernetes API Server to connect to. To support high 
 
 Generate a kubeconfig file suitable for authenticating as the `admin` user:
 
-```
-{
-  KUBERNETES_PUBLIC_ADDRESS=$(gcloud compute addresses describe kubernetes-the-hard-way \
-    --region $(gcloud config get-value compute/region) \
+<table style="width: 100vw;font-size: xx-small">
+<tr><th>Google Cloud</th><th>Exoscale</th></tr>
+<tr><td style="max-width:50vw;vertical-align:top"><pre>
+KUBERNETES_PUBLIC_ADDRESS=$(gcloud compute addresses describe kubernetes-the-hard-way &bsol;
+    --region $(gcloud config get-value compute/region) &bsol;
     --format 'value(address)')
 
-  kubectl config set-cluster kubernetes-the-hard-way \
-    --certificate-authority=ca.pem \
-    --embed-certs=true \
+  kubectl config set-cluster kubernetes-the-hard-way &bsol;
+    --certificate-authority=ca.pem &bsol;
+    --embed-certs=true &bsol;
     --server=https://${KUBERNETES_PUBLIC_ADDRESS}:6443
 
-  kubectl config set-credentials admin \
-    --client-certificate=admin.pem \
+  kubectl config set-credentials admin &bsol;
+    --client-certificate=admin.pem &bsol;
     --client-key=admin-key.pem
 
-  kubectl config set-context kubernetes-the-hard-way \
-    --cluster=kubernetes-the-hard-way \
+  kubectl config set-context kubernetes-the-hard-way &bsol;
+    --cluster=kubernetes-the-hard-way &bsol;
     --user=admin
 
   kubectl config use-context kubernetes-the-hard-way
-}
-```
+</pre></td>
+<td style="max-width:50vw;vertical-align:top"><pre>
+export KUBERNETES_PUBLIC_ADDRESS=$(exo eip list -O json | jq ".[].ip_address" | tr -d '"')
+
+  kubectl config set-cluster kubernetes-the-hard-way &bsol;
+    --certificate-authority=ca.pem &bsol;
+    --embed-certs=true &bsol;
+    --server=https://$(echo $KUBERNETES_PUBLIC_ADDRESS):6443
+
+  kubectl config set-credentials admin &bsol;
+    --client-certificate=admin.pem &bsol;
+    --client-key=admin-key.pem
+
+  kubectl config set-context kubernetes-the-hard-way &bsol;
+    --cluster=kubernetes-the-hard-way &bsol;
+    --user=admin
+
+  kubectl config use-context kubernetes-the-hard-way
+</pre></td></tr></table>
+
 
 ## Verification
 
